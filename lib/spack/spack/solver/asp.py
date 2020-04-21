@@ -14,6 +14,11 @@ import time
 import types
 from six import string_types
 
+try:
+    import clingo
+except ImportError:
+    clingo = None
+
 import llnl.util.cpu
 import llnl.util.tty as tty
 import llnl.util.tty.color as color
@@ -392,6 +397,83 @@ class ClingoDriver(object):
         return result
 
 
+def noop(*args):
+    pass
+
+
+class PyclingoDriver(object):
+    def __init__(self):
+        assert clingo, "PyclingoDriver requires clingo with Python support"
+
+    # PyclingoDriver does not generate a text program so ignore comments
+    h1 = noop
+    h2 = noop
+    newline = noop
+
+    def one_of(self, *args):
+        return AspOneOf(*args)
+
+    def _and(self, *args):
+        return AspAnd(*args)
+
+    def _not(self, arg):
+        return AspNot(arg)
+
+    def fact(self, head):
+        """ASP fact (a rule without a body)."""
+        self.out.write("%s.\n" % head)
+
+    def rule(self, head, body):
+        """ASP rule (an implication)."""
+        rule_line = "%s :- %s.\n" % (head, body)
+        if len(rule_line) > _max_line:
+            rule_line = re.sub(r' \| ', "\n| ", rule_line)
+        self.out.write(rule_line)
+
+    def solve(self, solver_setup, specs, dump=None, models=0, timers=False):
+        self.control = clingo.Control()
+        self.control.configuration.solve.models = 0
+
+        # read the main ASP program from concrtize.lp
+        concretize_lp = pkgutil.get_data('spack.solver', 'concretize.lp')
+        self.control.load(concretize_lp)
+
+        with self.control.backend() as backend:
+            self.backend = backend
+            solver_setup.setup(self, specs)
+        self.control.cleanup()
+        self.after_setup()
+
+        class Context(object):
+            def satisfies(self, a, b):
+                x = bool(ver(a.string).satisfies(ver(b.string)))
+                print("satisfies(%s, %s) == %s" % (a.string, b.string, x))
+                return x
+        self.control.ground([("base", [])], context=Context())
+
+        cores = []
+        with prg.solve(assumptions=assumptions,
+                       yield_=True,
+                       on_core=cores.append) as handle:
+            result = handle.get()
+            print(result)
+
+            for i, model in enumerate(handle):
+                print(model)
+                print(model.cost)
+                print(model.optimality_proven)
+                print(dir(model))
+                print()
+
+        if result.unsatisfiable:
+            if cores:
+                print("cores:")
+                for core in cores:
+                    print([atoms[a] for a in core])
+            else:
+                print("no cores.")
+
+
 class SpackSolverSetup(object):
     """Class to set up and run a Spack concretization solve."""
 
@@ -478,17 +560,18 @@ class SpackSolverSetup(object):
         self.gen.h2("Available compilers")
         compilers = self.possible_compilers
 
+        # print(compilers, [dir(c) for c in compilers])
+
         compiler_versions = collections.defaultdict(lambda: set())
         for compiler in compilers:
             compiler_versions[compiler.name].add(compiler.version)
 
         for compiler in sorted(compiler_versions):
             self.gen.fact(fn.compiler(compiler))
-            self.gen.rule(
-                self.gen._or(
-                    fn.compiler_version(compiler, v)
-                    for v in sorted(compiler_versions[compiler])),
-                fn.compiler(compiler))
+            for v in sorted(compiler_versions[compiler]):
+                self.gen.fact(fn.compiler_version(compiler, v))
+
+            self.gen.newline()
 
     def compiler_defaults(self):
         """Set compiler defaults, given a list of possible compilers."""
