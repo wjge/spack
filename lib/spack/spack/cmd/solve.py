@@ -105,11 +105,13 @@ def solve(parser, args):
     # dump the solutions as concretized specs
     if 'solutions' in dump:
         best = min(result.answers)
-        assert best[1] == result.answers[-1][1]
+#        from pprint import pprint
+#        pprint(result.answers)
+#        assert best[1] == result.answers[-1][1]
 
-        opt, i, answer = best
+        opt, _, answer = best
         if not args.format:
-            tty.msg("Best of %d answers." % (i + 1))
+            tty.msg("Best of %d answers." % len(result.answers))
             tty.msg("Optimization: %s" % opt)
 
         # iterate over roots from command line
