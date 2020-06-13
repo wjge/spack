@@ -6,7 +6,7 @@
 from spack import *
 
 
-class Dtk(CMakePackage):
+class Datatransferkit(CMakePackage):
     """DataTransferKit is an open-source software library of parallel solution transfer services for multiphysics simulations"""
 
     homepage = "datatransferkit.readthedoc.io"
@@ -15,14 +15,12 @@ class Dtk(CMakePackage):
 
     version('master', branch='master', submodules=True)
 
-    variant('cuda', default=False, description='enable Cuda backend')
     variant('openmp', default=False, description='enable OpenMP backend')
     variant('serial', default=True, description='enable Serial backend (default)')
 
     depends_on('cmake', type='build')
-    depends_on('trilinos@develop:~exodus+intrepid2~netcdf+shards', when='+serial')
-    depends_on('cuda', when='+cuda')
-    depends_on('trilinos@develop:~exodus+intrepid2~netcdf+shards+openmp', when='+openmp')
+    depends_on('trilinos@develop:+intrepid2+shards', when='+serial')
+    depends_on('trilinos@develop:+intrepid2+shards+openmp', when='+openmp')
 
     def cmake_args(self):
         spec = self.spec
@@ -41,9 +39,5 @@ class Dtk(CMakePackage):
 
         if '+openmp' in spec:
             options.append('-DDataTransferKit_ENABLE_OpenMP=ON')
-
-        if '+cuda' in spec:
-            nvcc_wrapper_path = spec['kokkos'].prefix.bin.nvcc_wrapper
-            options.append('-DCMAKE_CXX_COMPILER=%s' % nvcc_wrapper_path)
 
         return options
