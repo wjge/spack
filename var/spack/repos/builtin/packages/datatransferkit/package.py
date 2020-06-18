@@ -20,7 +20,7 @@ class Datatransferkit(CMakePackage):
 
     depends_on('cmake', type='build')
     depends_on('trilinos@develop:+intrepid2+shards', when='+serial')
-    depends_on('trilinos@develop:~netcdf~exodus+intrepid2+shards+openmp', when='+openmp')
+    depends_on('trilinos@develop:+intrepid2+shards+openmp', when='+openmp')
 
     def cmake_args(self):
         spec = self.spec
