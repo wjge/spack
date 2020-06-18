@@ -20,7 +20,7 @@ class Datatransferkit(CMakePackage):
 
     depends_on('cmake', type='build')
     depends_on('trilinos@develop:+intrepid2+shards', when='+serial')
-    depends_on('trilinos@develop:+intrepid2+shards+openmp', when='+openmp')
+    depends_on('trilinos@develop:~netcdf~exodus+intrepid2+shards+openmp', when='+openmp')
 
     def cmake_args(self):
         spec = self.spec
@@ -31,8 +31,6 @@ class Datatransferkit(CMakePackage):
             '-DDataTransferKit_ENABLE_DataTransferKit=ON',
             '-DDataTransferKit_ENABLE_TESTS=OFF',
             '-DDataTransferKit_ENABLE_EXAMPLES=OFF',
-            '-DTPL_Trilinos_DIR=${TRILINOS_DIR}',
-            '-DTPL_BoostOrg_INCLUDE_DIRS=${BOOST_DIR}/include',
             '-DCMAKE_CXX_EXTENSIONS=OFF',
             '-DCMAKE_CXX_STANDARD=14',
         ]
